@@ -14,7 +14,7 @@ local C = {  -- Camlock
     Enabled = false,
     HoldKey = Enum.UserInputType.MouseButton2,
     ToggleKey = Enum.KeyCode.T,
-    Smoothing = 4,        -- 1 = snap, mas mataas = mas smooth/mabagal (subukan 2-15)
+    Smoothing = 2,        -- 1 = snap, mas mataas = mas smooth/mabagal (subukan 2-15)
     FOV = 40,             -- radius sa pixels mula sa crosshair (maliit = yung nasa crosshair lang)
     MaxDistance = 500,    -- studs
     WallCheck = true,
@@ -159,12 +159,13 @@ local function camStep(dt)
             locked = nil
         end
     end
-    if not locked then
-        if tried then return end   -- walang lilipat sa iba hangga't hindi binibitawan ang key
-        tried = true
-        locked = findTarget(cam)   -- tanging yung nasa crosshair lang
-        if not locked then return end
+    -- yung pinakamalapit sa crosshair (loob ng FOV). Lilipat lang kapag may ibang mas malapit sa crosshair
+    -- kaysa sa kasalukuyang naka-lock, ibig sabihin hinila mo ang mouse papunta sa iba.
+    local cand = findTarget(cam)
+    if cand and cand ~= locked then
+        locked = cand
     end
+    if not locked then return end
 
     local part = getPart(locked.Character)
     if not part then locked = nil return end
@@ -202,6 +203,9 @@ if UIS.TouchEnabled then
         touchLock = not touchLock
         locked = nil
         b.Text = touchLock and "LOCK\nON" or "LOCK\nOFF"
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Camlock", Text = touchLock and "ON" or "OFF", Duration = 2})
+        end)
     end)
 end
 
@@ -315,15 +319,23 @@ RunService:BindToRenderStep("ChamsStep", Enum.RenderPriority.Camera.Value + 2, f
 ----------------------------------------------------------------
 -- INPUT (T = camlock, K = ESP)
 ----------------------------------------------------------------
+local function notify(title, text)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = text, Duration = 2})
+    end)
+end
+
 local inputConn = UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == C.ToggleKey then
         C.Enabled = not C.Enabled
         locked = nil
         print("[Camlock] Enabled:", C.Enabled)
+        notify("Camlock", C.Enabled and "ON" or "OFF")
     elseif input.KeyCode == E.ToggleKey then
         E.Enabled = not E.Enabled
         print("[Chams] Enabled:", E.Enabled)
+        notify("ESP", E.Enabled and "ON" or "OFF")
     end
 end)
 
