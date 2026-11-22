@@ -17,6 +17,7 @@ local S = {
     ShowNPCs = true,
     TeamCheck = false,
     Labels = true,
+    HideGameNames = true,   -- itatago ang pangalan/health bar na galing mismo sa laro
 }
 
 if getgenv and getgenv().__ChamsCleanup then pcall(getgenv().__ChamsCleanup) end
@@ -96,6 +97,11 @@ local function step()
             local root = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart
                 or model:FindFirstChild("Torso") or model:FindFirstChild("Head")
 
+            -- itago ang sariling pangalan/health bar ng laro sa ibabaw ng ulo
+            if S.HideGameNames and hum and hum.DisplayDistanceType ~= Enum.HumanoidDisplayDistanceType.None then
+                pcall(function() hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end)
+            end
+
             local hide = (not on) or (not root)
                 or (hum and hum.Health <= 0)
                 or (not S.ShowNPCs and not plr)
@@ -109,9 +115,8 @@ local function step()
                 o.hl.Enabled = true
                 o.bb.Adornee = model:FindFirstChild("Head") or root
                 o.bb.Enabled = S.Labels
-                local name = plr and plr.Name or model.Name
-                local hp = hum and (" | " .. math.floor(hum.Health) .. "hp") or ""
-                o.label.Text = name .. hp .. " | " .. math.floor(dist) .. "s"
+                local hp = hum and (math.floor(hum.Health) .. "hp | ") or ""
+                o.label.Text = hp .. math.floor(dist) .. "s"
             end
         end
     end
