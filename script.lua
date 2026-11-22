@@ -1,13 +1,27 @@
--- CHAMS ESP (walang Drawing API na kailangan) - para sa mobile executors
--- Highlight (kulay sa katawan, nakikita sa pader) + pangalan/health/distansya sa ulo.
--- K = ON/OFF (sa PC). Sa mobile, naka-ON agad. Para i-off: i-set ang getgenv().ChamsOff = true
+-- CAMLOCK + CHAMS ESP (combined) - Roblox executor
+-- Camlock: hawakan ang HoldKey (default right click) para mag-lock. T = ON/OFF (nagsisimula OFF).
+-- ESP: K = ON/OFF (sa PC). Sa mobile, naka-ON agad. Para i-off: getgenv().ChamsOff = true
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local LP = Players.LocalPlayer
 
-local S = {
+----------------------------------------------------------------
+-- SETTINGS
+----------------------------------------------------------------
+local C = {  -- Camlock
+    Enabled = false,
+    HoldKey = Enum.UserInputType.MouseButton2,
+    ToggleKey = Enum.KeyCode.T,
+    Smoothing = 4,        -- 1 = snap, mas mataas = mas smooth/mabagal (subukan 2-15)
+    FOV = 300,            -- radius sa pixels mula sa gitna ng screen
+    MaxDistance = 500,    -- studs
+    WallCheck = true,
+    Part = "Head",        -- "Head" o "Torso"
+}
+
+local E = {  -- ESP
     Enabled = true,
     ToggleKey = Enum.KeyCode.K,
     Fill = Color3.fromRGB(255, 0, 0),
@@ -16,16 +30,186 @@ local S = {
     MaxDistance = 5000,
     ShowNPCs = true,
     TeamCheck = false,
-    Labels = true,
+    Labels = false,         -- false = walang text, kulay lang sa katawan
     HideGameNames = true,   -- itatago ang pangalan/health bar na galing mismo sa laro
 }
 
-if getgenv and getgenv().__ChamsCleanup then pcall(getgenv().__ChamsCleanup) end
+----------------------------------------------------------------
+-- CLEANUP NG NAKARAANG RUN
+----------------------------------------------------------------
+if getgenv then
+    for _, k in ipairs({"__CamlockEspCleanup", "__CamlockCleanup", "__ChamsCleanup"}) do
+        if getgenv()[k] then pcall(getgenv()[k]) end
+    end
+end
 
+pcall(function() RunService:UnbindFromRenderStep("CamlockStep") end)
+pcall(function() RunService:UnbindFromRenderStep("ChamsStep") end)
+
+local parents = {game:GetService("CoreGui")}
+if LP:FindFirstChild("PlayerGui") then table.insert(parents, LP.PlayerGui) end
+if gethui then
+    local okH, h = pcall(gethui)
+    if okH and h then table.insert(parents, h) end
+end
+for _, parent in ipairs(parents) do
+    for _, c in ipairs(parent:GetChildren()) do
+        if c.Name == "ChamsHolder" or c.Name == "CamlockBtn" then pcall(function() c:Destroy() end) end
+    end
+end
+
+----------------------------------------------------------------
+-- CAMLOCK
+----------------------------------------------------------------
+local touchLock = false  -- para sa mobile (button sa screen)
+
+local function isDown(key)
+    if touchLock then return true end
+    if key.EnumType == Enum.UserInputType then
+        return UIS:IsMouseButtonPressed(key)
+    end
+    return UIS:IsKeyDown(key)
+end
+
+local function getPart(char)
+    if C.Part == "Head" then
+        return char:FindFirstChild("Head")
+    end
+    return char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+        or char:FindFirstChild("HumanoidRootPart")
+end
+
+local function isDead(char, hum)
+    if hum.Health <= 0 or hum:GetState() == Enum.HumanoidStateType.Dead then
+        return true
+    end
+    local ok, ko = pcall(function()
+        local be = char:FindFirstChild("BodyEffects")
+        local v = be and be:FindFirstChild("K.O")
+        return v and v.Value
+    end)
+    return ok and ko == true
+end
+
+local function visible(cam, part, char)
+    if not C.WallCheck then return true end
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local ignore = {char}
+    if LP.Character then table.insert(ignore, LP.Character) end
+    params.FilterDescendantsInstances = ignore
+    local origin = cam.CFrame.Position
+    local dir = part.Position - origin
+    for _ = 1, 8 do
+        local hit = workspace:Raycast(origin, dir, params)
+        if not hit then return true end
+        local inst = hit.Instance
+        if inst.Transparency >= 0.9 or not inst.CanCollide then
+            table.insert(ignore, inst)
+            params.FilterDescendantsInstances = ignore
+        else
+            return false
+        end
+    end
+    return false
+end
+
+-- pinakamalapit sa gitna ng screen (sa loob ng FOV)
+local function findTarget(cam)
+    local center = cam.ViewportSize / 2
+    local best, bestD = nil, C.FOV
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP and plr.Character then
+            local char = plr.Character
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local part = getPart(char)
+            if hum and part and not isDead(char, hum) then
+                local pos, onScreen = cam:WorldToViewportPoint(part.Position)
+                local dist3 = (part.Position - cam.CFrame.Position).Magnitude
+                if onScreen and dist3 <= C.MaxDistance then
+                    local d = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if d < bestD and visible(cam, part, char) then
+                        best, bestD = plr, d
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+local locked = nil
+
+local function camStep(dt)
+    local cam = workspace.CurrentCamera
+    if not cam or not C.Enabled or not isDown(C.HoldKey) then
+        locked = nil
+        return
+    end
+
+    -- ilock ang isang player hanggang bitawan ang key o mamatay/mawala
+    if locked then
+        local char = locked.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local part = char and getPart(char)
+        if not (hum and part) or isDead(char, hum) or not visible(cam, part, char) then
+            locked = nil
+        end
+    end
+    if not locked then
+        locked = findTarget(cam)
+        if not locked then return end
+    end
+
+    local part = getPart(locked.Character)
+    if not part then locked = nil return end
+
+    -- smoothing: frame-rate independent
+    local s = math.max(1, C.Smoothing)
+    local alpha = 1 - (1 - 1 / s) ^ (math.clamp(dt, 0, 0.1) * 60)
+    local goal = CFrame.new(cam.CFrame.Position, part.Position)
+    cam.CFrame = cam.CFrame:Lerp(goal, alpha)
+end
+
+-- MOBILE: button sa screen (i-tap para ON/OFF ng lock)
+local btnGui
+if UIS.TouchEnabled then
+    btnGui = Instance.new("ScreenGui")
+    btnGui.Name = "CamlockBtn"
+    btnGui.ResetOnSpawn = false
+    local okP = pcall(function() btnGui.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
+    if not okP then btnGui.Parent = LP:WaitForChild("PlayerGui") end
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0, 80, 0, 80)
+    b.Position = UDim2.new(1, -110, 0.5, -40)
+    b.BackgroundColor3 = Color3.new(0, 0, 0)
+    b.BackgroundTransparency = 0.3
+    b.BorderColor3 = Color3.fromRGB(0, 200, 120)
+    b.TextColor3 = Color3.new(1, 1, 1)
+    b.Font = Enum.Font.SourceSansBold
+    b.TextSize = 18
+    b.Text = "LOCK\nOFF"
+    b.Active = true
+    b.Draggable = true
+    b.Parent = btnGui
+    b.MouseButton1Click:Connect(function()
+        C.Enabled = true
+        touchLock = not touchLock
+        locked = nil
+        b.Text = touchLock and "LOCK\nON" or "LOCK\nOFF"
+    end)
+end
+
+RunService:BindToRenderStep("CamlockStep", Enum.RenderPriority.Camera.Value + 1, camStep)
+
+----------------------------------------------------------------
+-- CHAMS ESP
+----------------------------------------------------------------
 local holder = Instance.new("Folder")
 holder.Name = "ChamsHolder"
-local okP = pcall(function() holder.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
-if not okP then holder.Parent = LP:WaitForChild("PlayerGui") end
+local okH2 = pcall(function() holder.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
+if not okH2 then holder.Parent = LP:WaitForChild("PlayerGui") end
 
 local tracked = {}   -- [model] = {hl, bb, label}
 local models = {}
@@ -37,14 +221,14 @@ local function tryAdd(inst)
     end
 end
 for _, d in ipairs(workspace:GetDescendants()) do tryAdd(d) end
-local c0 = workspace.DescendantAdded:Connect(tryAdd)
+local cAdded = workspace.DescendantAdded:Connect(tryAdd)
 
 local function create(model)
     local hl = Instance.new("Highlight")
     hl.Adornee = model
-    hl.FillColor = S.Fill
-    hl.OutlineColor = S.Outline
-    hl.FillTransparency = S.FillTransparency
+    hl.FillColor = E.Fill
+    hl.OutlineColor = E.Outline
+    hl.FillTransparency = E.FillTransparency
     hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     hl.Parent = holder
 
@@ -81,10 +265,10 @@ local function hideObj(o)
     o.bb.Enabled = false
 end
 
-local function step()
+local function espStep()
     local cam = workspace.CurrentCamera
     if not cam then return end
-    local on = S.Enabled and not (getgenv and getgenv().ChamsOff)
+    local on = E.Enabled and not (getgenv and getgenv().ChamsOff)
 
     for model in pairs(models) do
         if not model.Parent or not model:IsDescendantOf(workspace) then
@@ -98,23 +282,23 @@ local function step()
                 or model:FindFirstChild("Torso") or model:FindFirstChild("Head")
 
             -- itago ang sariling pangalan/health bar ng laro sa ibabaw ng ulo
-            if S.HideGameNames and hum and hum.DisplayDistanceType ~= Enum.HumanoidDisplayDistanceType.None then
+            if E.HideGameNames and hum and hum.DisplayDistanceType ~= Enum.HumanoidDisplayDistanceType.None then
                 pcall(function() hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end)
             end
 
             local hide = (not on) or (not root)
                 or (hum and hum.Health <= 0)
-                or (not S.ShowNPCs and not plr)
-                or (S.TeamCheck and plr and plr.Team ~= nil and plr.Team == LP.Team)
+                or (not E.ShowNPCs and not plr)
+                or (E.TeamCheck and plr and plr.Team ~= nil and plr.Team == LP.Team)
             local dist = root and (root.Position - cam.CFrame.Position).Magnitude or math.huge
-            if dist > S.MaxDistance then hide = true end
+            if dist > E.MaxDistance then hide = true end
 
             if hide then
                 hideObj(o)
             else
                 o.hl.Enabled = true
                 o.bb.Adornee = model:FindFirstChild("Head") or root
-                o.bb.Enabled = S.Labels
+                o.bb.Enabled = E.Labels
                 local hp = hum and (math.floor(hum.Health) .. "hp | ") or ""
                 o.label.Text = hp .. math.floor(dist) .. "s"
             end
@@ -122,25 +306,35 @@ local function step()
     end
 end
 
-local conn = RunService.RenderStepped:Connect(function() pcall(step) end)
-local c2 = UIS.InputBegan:Connect(function(input, gpe)
+RunService:BindToRenderStep("ChamsStep", Enum.RenderPriority.Camera.Value + 2, function() pcall(espStep) end)
+
+----------------------------------------------------------------
+-- INPUT (T = camlock, K = ESP)
+----------------------------------------------------------------
+local inputConn = UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    if input.KeyCode == S.ToggleKey then
-        S.Enabled = not S.Enabled
-        print("[Chams] Enabled:", S.Enabled)
+    if input.KeyCode == C.ToggleKey then
+        C.Enabled = not C.Enabled
+        locked = nil
+        print("[Camlock] Enabled:", C.Enabled)
+    elseif input.KeyCode == E.ToggleKey then
+        E.Enabled = not E.Enabled
+        print("[Chams] Enabled:", E.Enabled)
     end
 end)
 
 if getgenv then
-    getgenv().__ChamsCleanup = function()
-        conn:Disconnect()
-        c0:Disconnect()
-        c2:Disconnect()
+    getgenv().__CamlockEspCleanup = function()
+        pcall(function() RunService:UnbindFromRenderStep("CamlockStep") end)
+        pcall(function() RunService:UnbindFromRenderStep("ChamsStep") end)
+        inputConn:Disconnect()
+        cAdded:Disconnect()
+        if btnGui then btnGui:Destroy() end
         holder:Destroy()
     end
 end
 
-print("[Chams] Loaded.")
+print("[Camlock+ESP] Loaded. T = camlock ON/OFF (hold right click), K = ESP ON/OFF.")
 pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Chams ESP", Text = "Loaded", Duration = 4})
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Camlock + ESP", Text = "Loaded", Duration = 4})
 end)
