@@ -15,7 +15,7 @@ local C = {  -- Camlock
     HoldKey = Enum.UserInputType.MouseButton2,
     ToggleKey = Enum.KeyCode.T,
     Smoothing = 4,        -- 1 = snap, mas mataas = mas smooth/mabagal (subukan 2-15)
-    FOV = 300,            -- radius sa pixels mula sa gitna ng screen
+    FOV = 40,             -- radius sa pixels mula sa crosshair (maliit = yung nasa crosshair lang)
     MaxDistance = 500,    -- studs
     WallCheck = true,
     Part = "Head",        -- "Head" o "Torso"
@@ -140,25 +140,29 @@ local function findTarget(cam)
 end
 
 local locked = nil
+local tried = false  -- isang subok lang bawat hold
 
 local function camStep(dt)
     local cam = workspace.CurrentCamera
     if not cam or not C.Enabled or not isDown(C.HoldKey) then
         locked = nil
+        tried = false
         return
     end
 
-    -- ilock ang isang player hanggang bitawan ang key o mamatay/mawala
+    -- one-target: kapag nakalock na, ito lang hanggang bitawan ang key o mamatay/mawala
     if locked then
         local char = locked.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         local part = char and getPart(char)
-        if not (hum and part) or isDead(char, hum) or not visible(cam, part, char) then
+        if not (hum and part) or isDead(char, hum) then
             locked = nil
         end
     end
     if not locked then
-        locked = findTarget(cam)
+        if tried then return end   -- walang lilipat sa iba hangga't hindi binibitawan ang key
+        tried = true
+        locked = findTarget(cam)   -- tanging yung nasa crosshair lang
         if not locked then return end
     end
 
