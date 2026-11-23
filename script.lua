@@ -27,6 +27,8 @@ local E = {  -- ESP
     Fill = Color3.fromRGB(255, 0, 0),
     Outline = Color3.fromRGB(255, 255, 255),
     FillTransparency = 0.5,
+    VisibleColor = Color3.fromRGB(0, 255, 0),   -- GREEN = walang pader, tanaw mo
+    HiddenColor = Color3.fromRGB(255, 0, 0),    -- RED = nasa likod ng pader
     MaxDistance = 5000,
     ShowNPCs = true,
     TeamCheck = false,
@@ -92,8 +94,8 @@ local function isDead(char, hum)
     return ok and ko == true
 end
 
-local function visible(cam, part, char)
-    if not C.WallCheck then return true end
+local function visible(cam, part, char, force)
+    if not C.WallCheck and not force then return true end
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
     local ignore = {char}
@@ -273,6 +275,31 @@ local function hideObj(o)
     o.bb.Enabled = false
 end
 
+-- WALLCHECK para sa ESP: may pader = RED, open area = GREEN
+-- Ang ibang players/NPC ay hindi binibilang na pader. Ang mga transparent lang ang nilalampasan.
+local function espVisible(cam, target)
+    local ignore = {}
+    if LP.Character then table.insert(ignore, LP.Character) end
+    for m in pairs(models) do
+        if m.Parent then table.insert(ignore, m) end
+    end
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local origin = cam.CFrame.Position
+    local dir = target.Position - origin
+    for _ = 1, 25 do
+        params.FilterDescendantsInstances = ignore
+        local hit = workspace:Raycast(origin, dir, params)
+        if not hit then return true end          -- walang humarang = open area
+        local p = hit.Instance
+        -- pader kung nakikita (hindi halos transparent) at solid o malaki
+        local isWall = p.Transparency < 0.95 and (p.CanCollide or p.Size.Magnitude > 6)
+        if isWall then return false end          -- may pader
+        table.insert(ignore, p)                  -- dekorasyon/salamin lang, lampasan
+    end
+    return false
+end
+
 local function espStep()
     local cam = workspace.CurrentCamera
     if not cam then return end
@@ -305,6 +332,16 @@ local function espStep()
                 hideObj(o)
             else
                 o.hl.Enabled = true
+                -- GREEN kung walang pader sa pagitan ng camera at ulo, RED kung may pader
+                local now = tick()
+                if not o.t or now - o.t > 0.08 then
+                    o.t = now
+                    local target = model:FindFirstChild("Head") or root
+                    o.vis = espVisible(cam, target)
+                end
+                local col = o.vis and E.VisibleColor or E.HiddenColor
+                o.hl.FillColor = col
+                o.hl.OutlineColor = col
                 o.bb.Adornee = model:FindFirstChild("Head") or root
                 o.bb.Enabled = E.Labels
                 local hp = hum and (math.floor(hum.Health) .. "hp | ") or ""
