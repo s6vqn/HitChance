@@ -1,27 +1,23 @@
--- CAMLOCK + CHAMS ESP (combined) - Roblox executor
--- Camlock: hawakan ang HoldKey (default right click) para mag-lock. T = ON/OFF (nagsisimula OFF).
--- ESP: K = ON/OFF (sa PC). Sa mobile, naka-ON agad. Para i-off: getgenv().ChamsOff = true
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local LP = Players.LocalPlayer
 
-----------------------------------------------------------------
--- SETTINGS
-----------------------------------------------------------------
-local C = {  -- Camlock
+
+local C = { 
     Enabled = false,
     HoldKey = Enum.UserInputType.MouseButton2,
     ToggleKey = Enum.KeyCode.T,
-    Smoothing = 2,        -- 1 = snap, mas mataas = mas smooth/mabagal (subukan 2-15)
-    FOV = 40,             -- radius sa pixels mula sa crosshair (maliit = yung nasa crosshair lang)
-    MaxDistance = 500,    -- studs
+    Smoothing = 2,        )
+    FOV = 40,             
+    MaxDistance = 500,    
     WallCheck = true,
-    Part = "Head",        -- "Head" o "Torso"
+    Part = "Head",        
 }
 
-local E = {  -- ESP
+local E = { 
     Enabled = true,
     ToggleKey = Enum.KeyCode.K,
     Fill = Color3.fromRGB(255, 0, 0),
@@ -30,13 +26,11 @@ local E = {  -- ESP
     MaxDistance = 5000,
     ShowNPCs = true,
     TeamCheck = false,
-    Labels = false,         -- false = walang text, kulay lang sa katawan
-    HideGameNames = true,   -- itatago ang pangalan/health bar na galing mismo sa laro
+    Labels = false,         
+    HideGameNames = true,   
 }
 
-----------------------------------------------------------------
--- CLEANUP NG NAKARAANG RUN
-----------------------------------------------------------------
+
 if getgenv then
     for _, k in ipairs({"__CamlockEspCleanup", "__CamlockCleanup", "__ChamsCleanup"}) do
         if getgenv()[k] then pcall(getgenv()[k]) end
@@ -58,10 +52,8 @@ for _, parent in ipairs(parents) do
     end
 end
 
-----------------------------------------------------------------
--- CAMLOCK
-----------------------------------------------------------------
-local touchLock = false  -- para sa mobile (button sa screen)
+-
+local touchLock = false 
 
 local function isDown(key)
     if touchLock then return true end
@@ -115,7 +107,6 @@ local function visible(cam, part, char)
     return false
 end
 
--- pinakamalapit sa gitna ng screen (sa loob ng FOV)
 local function findTarget(cam)
     local center = cam.ViewportSize / 2
     local best, bestD = nil, C.FOV
@@ -140,7 +131,7 @@ local function findTarget(cam)
 end
 
 local locked = nil
-local tried = false  -- isang subok lang bawat hold
+local tried = false 
 
 local function camStep(dt)
     local cam = workspace.CurrentCamera
@@ -150,7 +141,7 @@ local function camStep(dt)
         return
     end
 
-    -- one-target: kapag nakalock na, ito lang hanggang bitawan ang key o mamatay/mawala
+    
     if locked then
         local char = locked.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -159,8 +150,8 @@ local function camStep(dt)
             locked = nil
         end
     end
-    -- yung pinakamalapit sa crosshair (loob ng FOV). Lilipat lang kapag may ibang mas malapit sa crosshair
-    -- kaysa sa kasalukuyang naka-lock, ibig sabihin hinila mo ang mouse papunta sa iba.
+    
+   
     local cand = findTarget(cam)
     if cand and cand ~= locked then
         locked = cand
@@ -170,14 +161,14 @@ local function camStep(dt)
     local part = getPart(locked.Character)
     if not part then locked = nil return end
 
-    -- smoothing: frame-rate independent
+  
     local s = math.max(1, C.Smoothing)
     local alpha = 1 - (1 - 1 / s) ^ (math.clamp(dt, 0, 0.1) * 60)
     local goal = CFrame.new(cam.CFrame.Position, part.Position)
     cam.CFrame = cam.CFrame:Lerp(goal, alpha)
 end
 
--- MOBILE: button sa screen (i-tap para ON/OFF ng lock)
+
 local btnGui
 if UIS.TouchEnabled then
     btnGui = Instance.new("ScreenGui")
@@ -211,15 +202,13 @@ end
 
 RunService:BindToRenderStep("CamlockStep", Enum.RenderPriority.Camera.Value + 1, camStep)
 
-----------------------------------------------------------------
--- CHAMS ESP
-----------------------------------------------------------------
+
 local holder = Instance.new("Folder")
 holder.Name = "ChamsHolder"
 local okH2 = pcall(function() holder.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
 if not okH2 then holder.Parent = LP:WaitForChild("PlayerGui") end
 
-local tracked = {}   -- [model] = {hl, bb, label}
+local tracked = {}   
 local models = {}
 
 local function tryAdd(inst)
@@ -316,9 +305,7 @@ end
 
 RunService:BindToRenderStep("ChamsStep", Enum.RenderPriority.Camera.Value + 2, function() pcall(espStep) end)
 
-----------------------------------------------------------------
--- INPUT (T = camlock, K = ESP)
-----------------------------------------------------------------
+
 local function notify(title, text)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = text, Duration = 2})
