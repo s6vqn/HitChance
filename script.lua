@@ -57,41 +57,41 @@
   "HumanoidRootPart") and inst:IsA("BasePart"))) then local m=inst.Parent;if (m and m:IsA("Model")) then models[m]=true;end end end for _,d in ipairs(workspace:           
   GetDescendants()) do tryAdd(d);end local cAdded=workspace.DescendantAdded:Connect(tryAdd);local function create(model) local hl=Instance.new("Highlight");hl.Adornee=    
   model;hl.FillColor=E.Fill;hl.FillTransparency=E.FillTransparency;hl.OutlineColor=E.Outline;hl.OutlineTransparency=0;hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop;hl  
-  .Parent=holder;local bb=Instance.new("BillboardGui");bb.Size=UDim2.new(4,0,0.45,0);bb.StudsOffsetWorldSpace=Vector3.new(0, -3.7,0);bb.AlwaysOnTop=true;bb.LightInfluence=  
-  0;bb.Enabled=false;bb.Parent=holder;local bg=Instance.new("Frame");bg.Size=UDim2.new(1,0,1,0);bg.BackgroundColor3=Color3.new(0,0,0);bg.BackgroundTransparency=0.3;bg.      
-  BorderSizePixel=0;bg.Parent=bb;local fill=Instance.new("Frame");fill.Size=UDim2.new(1,0,1,0);fill.BackgroundColor3=Color3.fromRGB(0,255,0);fill.BorderSizePixel=0;fill.    
-  Parent=bg;local o={hl=hl,bb=bb,fill=fill};tracked[model]=o;return o;end local function remove(model) local o=tracked[model];if o then pcall(function() o.hl:Destroy();end  
-  );pcall(function() o.bb:Destroy();end);tracked[model]=nil;end end local espAcc=0;local function espStep(dt) espAcc+=dt if (espAcc<0.1) then return;end espAcc=0;local cam  
-  =workspace.CurrentCamera;if  not cam then return;end local on=E.Enabled and  not (getgenv and getgenv().ChamsOff) ;local camPos=cam.CFrame.Position;local shownList={};    
-  for model in pairs(models) do if ( not model.Parent or  not model:IsDescendantOf(workspace)) then models[model]=nil;remove(model);elseif (model~=LP.Character) then local  
-   o=tracked[model] or create(model) ;local hum=o.hum;if ( not hum or (hum.Parent~=model)) then hum=model:FindFirstChildOfClass("Humanoid");o.hum=hum;end local root=o.root  
-  ;if ( not root or (root.Parent~=model)) then root=model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart or model:FindFirstChild("Torso") or model:FindFirstChild(  
-  "Head") ;o.root=root;end if (E.HideGameNames and hum and  not o.nameHidden) then o.nameHidden=true;pcall(function() hum.DisplayDistanceType=Enum.                          
-  HumanoidDisplayDistanceType.None;end);end local plr=((E.TeamCheck or  not E.ShowNPCs) and Players:GetPlayerFromCharacter(model)) or nil ;local hide= not on or  not root   
-  or (hum and (hum.Health<=0)) or ( not E.ShowNPCs and  not plr) or (E.TeamCheck and plr and (plr.Team~=nil) and (plr.Team==LP.Team)) ;if ( not hide and ((root.Position-    
-  camPos).Magnitude>E.MaxDistance)) then hide=true;end if hide then if (o.shown~=false) then o.shown=false;o.hl.Enabled=false;o.hlOn=false;o.bb.Enabled=false;o.bbOn=false;  
-  end else o.shown=true;o.dist=(root.Position-camPos).Magnitude;table.insert(shownList,o);if (o.adornee~=root) then o.adornee=root;o.bb.Adornee=root;end if (o.bbOn~=E.    
-  HPBar) then o.bbOn=E.HPBar;o.bb.Enabled=E.HPBar;end local frac=(hum and math.clamp(hum.Health/math.max(hum.MaxHealth,1) ,0,1)) or 1 ;if (frac~=o.frac) then o.frac=frac  
-  ;o.fill.Size=UDim2.new(frac,0,1,0);o.fill.BackgroundColor3=Color3.fromHSV(frac * 0.33 ,1,1);end end end end table.sort(shownList,function(a,b) return a.dist<b.dist ;    
-    end);for i,o in ipairs(shownList) do local want=i<=E.MaxHighlights ;if (o.hlOn~=want) then o.hlOn=want;o.hl.Enabled=want;end end end RunService:BindToRenderStep(      
-    "ChamsStep",Enum.RenderPriority.Camera.Value + 2 ,function(dt) pcall(espStep,dt);end);local function notify(title,text) pcall(function() game:GetService("StarterGui"  
-    ):SetCore("SendNotification",{Title=title,Text=text,Duration=2});end);end local inputConn=UIS.InputBegan:Connect(function(input,gpe) if gpe then return;end if (input  
-    .KeyCode==C.ToggleKey) then C.Enabled= not C.Enabled;locked=nil;print("[Camlock] Enabled:",C.Enabled);notify("Camlock",(C.Enabled and "ON") or "OFF" );elseif (input.  
-      KeyCode==E.ToggleKey) then E.Enabled= not E.Enabled;print("[Chams] Enabled:",E.Enabled);notify("ESP",(E.Enabled and "ON") or "OFF" );end end);if getgenv then      
-      getgenv().__CamlockEspCleanup=function() pcall(function() RunService:UnbindFromRenderStep("CamlockStep");end);pcall(function() RunService:UnbindFromRenderStep(    
-      "ChamsStep");end);inputConn:Disconnect();cAdded:Disconnect();if btnGui then btnGui:Destroy();end holder:Destroy();end;end print(                                   
-        "[Camlock+ESP] Loaded. T = camlock ON/OFF (hold right click), K = ESP ON/OFF.");pcall(function() game:GetService("StarterGui"):SetCore("SendNotification",{      
-        Title="Camlock + ESP",Text="made by exil",Duration=4});end);local R={Enabled=true,Scale=0,ToggleKey=Enum.KeyCode.Y};local SKIP={"rate","rpm","delay","ammo",     
-        "damage","speed","time","cooldown","range","spread","mag"};if getgenv then if getgenv().RecoilRestore then pcall(getgenv().RecoilRestore);end if getgenv().      
-          __RecoilConn then pcall(function() getgenv().__RecoilConn:Disconnect();end);end end local recoilOriginals={};local function recoilKeySkipped(k) local s=     
-            string.lower(tostring(k));for _,w in ipairs(SKIP) do if string.find(s,w,1,true) then return true;end end return false;end local function recoilScale(data  
-              ) local n=0;local function mul(t,k) local v=t[k];if (type(v)=="number") then table.insert(recoilOriginals,{t,k,v});t[k]=v * R.Scale ;n+=1 end end if (   
-                type(data.Scale)=="table") then for k in pairs(data.Scale) do mul(data.Scale,k);end end if (type(data.Feel)=="table") then for _,feel in pairs(data.   
-                  Feel) do if (type(feel)=="table") then for k in pairs(feel) do mul(feel,k);end end end end if (type(data.Guns)=="table") then for _,g in pairs(    
-                      data.Guns) do if (type(g)=="table") then for _,k in ipairs({"V","First","Random","Bias"}) do mul(g,k);end for _,list in ipairs({g.Up or {} ,g  
-                                  .Side or {} }) do for _,point in ipairs(list) do if (type(point)=="table") then mul(point,2);end end end end end end return n;end  
-                                       local function recoilRestore() for _,e in ipairs(recoilOriginals) do pcall(function() e[1][e[2]]=e[3];end);end                
-                                      recoilOriginals={};end local function recoilApply()                   recoilRestore();local RS=game:GetService(                
+  .Parent=holder;local bb=Instance.new("BillboardGui");bb.Size=UDim2.new(3.5,0,0.06,0);bb.StudsOffsetWorldSpace=Vector3.new(0, -3.7,0);bb.AlwaysOnTop=true;bb.               
+  LightInfluence=0;bb.Enabled=false;bb.Parent=holder;local bg=Instance.new("Frame");bg.Size=UDim2.new(1,0,1,0);bg.BackgroundColor3=Color3.new(0,0,0);bg.                     
+  BackgroundTransparency=0.3;bg.BorderSizePixel=0;bg.Parent=bb;local fill=Instance.new("Frame");fill.Size=UDim2.new(1,0,1,0);fill.BackgroundColor3=Color3.fromRGB(0,255,0);  
+  fill.BorderSizePixel=0;fill.Parent=bg;local o={hl=hl,bb=bb,fill=fill};tracked[model]=o;return o;end local function remove(model) local o=tracked[model];if o then pcall(   
+  function() o.hl:Destroy();end);pcall(function() o.bb:Destroy();end);tracked[model]=nil;end end local espAcc=0;local function espStep(dt) espAcc+=dt if (espAcc<0.1) then   
+  return;end espAcc=0;local cam=workspace.CurrentCamera;if  not cam then return;end local on=E.Enabled and  not (getgenv and getgenv().ChamsOff) ;local camPos=cam.CFrame.   
+  Position;local shownList={};for model in pairs(models) do if ( not model.Parent or  not model:IsDescendantOf(workspace)) then models[model]=nil;remove(model);elseif (     
+  model~=LP.Character) then local o=tracked[model] or create(model) ;local hum=o.hum;if ( not hum or (hum.Parent~=model)) then hum=model:FindFirstChildOfClass("Humanoid");  
+  o.hum=hum;end local root=o.root;if ( not root or (root.Parent~=model)) then root=model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart or model:FindFirstChild(    
+  "Torso") or model:FindFirstChild("Head") ;o.root=root;end if (E.HideGameNames and hum and  not o.nameHidden) then o.nameHidden=true;pcall(function() hum.                  
+  DisplayDistanceType=Enum.HumanoidDisplayDistanceType.None;end);end local plr=((E.TeamCheck or  not E.ShowNPCs) and Players:GetPlayerFromCharacter(model)) or nil ;local    
+  hide= not on or  not root or (hum and (hum.Health<=0)) or ( not E.ShowNPCs and  not plr) or (E.TeamCheck and plr and (plr.Team~=nil) and (plr.Team==LP.Team)) ;if ( not    
+  hide and ((root.Position-camPos).Magnitude>E.MaxDistance)) then hide=true;end if hide then if (o.shown~=false) then o.shown=false;o.hl.Enabled=false;o.hlOn=false;o.bb.    
+  Enabled=false;o.bbOn=false;end else o.shown=true;o.dist=(root.Position-camPos).Magnitude;table.insert(shownList,o);if (o.adornee~=root) then o.adornee=root;o.bb.        
+  Adornee=root;end if (o.bbOn~=E.HPBar) then o.bbOn=E.HPBar;o.bb.Enabled=E.HPBar;end local frac=(hum and math.clamp(hum.Health/math.max(hum.MaxHealth,1) ,0,1)) or 1 ;if   
+  (frac~=o.frac) then o.frac=frac;o.fill.Size=UDim2.new(frac,0,1,0);o.fill.BackgroundColor3=Color3.fromHSV(frac * 0.33 ,1,1);end end end end table.sort(shownList,         
+    function(a,b) return a.dist<b.dist ;end);for i,o in ipairs(shownList) do local want=i<=E.MaxHighlights ;if (o.hlOn~=want) then o.hlOn=want;o.hl.Enabled=want;end end   
+    end RunService:BindToRenderStep("ChamsStep",Enum.RenderPriority.Camera.Value + 2 ,function(dt) pcall(espStep,dt);end);local function notify(title,text) pcall(         
+    function() game:GetService("StarterGui"):SetCore("SendNotification",{Title=title,Text=text,Duration=2});end);end local inputConn=UIS.InputBegan:Connect(function(      
+    input,gpe) if gpe then return;end if (input.KeyCode==C.ToggleKey) then C.Enabled= not C.Enabled;locked=nil;print("[Camlock] Enabled:",C.Enabled);notify("Camlock",(C.  
+      Enabled and "ON") or "OFF" );elseif (input.KeyCode==E.ToggleKey) then E.Enabled= not E.Enabled;print("[Chams] Enabled:",E.Enabled);notify("ESP",(E.Enabled and     
+      "ON") or "OFF" );end end);if getgenv then getgenv().__CamlockEspCleanup=function() pcall(function() RunService:UnbindFromRenderStep("CamlockStep");end);pcall(     
+      function() RunService:UnbindFromRenderStep("ChamsStep");end);inputConn:Disconnect();cAdded:Disconnect();if btnGui then btnGui:Destroy();end holder:Destroy();end;  
+        end print("[Camlock+ESP] Loaded. T = camlock ON/OFF (hold right click), K = ESP ON/OFF.");pcall(function() game:GetService("StarterGui"):SetCore(                
+        "SendNotification",{Title="Camlock + ESP",Text="made by exil",Duration=4});end);local R={Enabled=true,Scale=0,ToggleKey=Enum.KeyCode.Y};local SKIP={"rate",      
+        "rpm","delay","ammo","damage","speed","time","cooldown","range","spread","mag"};if getgenv then if getgenv().RecoilRestore then pcall(getgenv().RecoilRestore);  
+          end if getgenv().__RecoilConn then pcall(function() getgenv().__RecoilConn:Disconnect();end);end end local recoilOriginals={};local function                 
+            recoilKeySkipped(k) local s=string.lower(tostring(k));for _,w in ipairs(SKIP) do if string.find(s,w,1,true) then return true;end end return false;end      
+              local function recoilScale(data) local n=0;local function mul(t,k) local v=t[k];if (type(v)=="number") then table.insert(recoilOriginals,{t,k,v});t[k]=  
+                v * R.Scale ;n+=1 end end if (type(data.Scale)=="table") then for k in pairs(data.Scale) do mul(data.Scale,k);end end if (type(data.Feel)=="table")    
+                  then for _,feel in pairs(data.Feel) do if (type(feel)=="table") then for k in pairs(feel) do mul(feel,k);end end end end if (type(data.Guns)==     
+                      "table") then for _,g in pairs(data.Guns) do if (type(g)=="table") then for _,k in ipairs({"V","First","Random","Bias"}) do mul(g,k);end for   
+                                  _,list in ipairs({g.Up or {} ,g.Side or {} }) do for _,point in ipairs(list) do if (type(point)=="table") then mul(point,2);end    
+                                      end end end end end return n;end local function recoilRestore() for _,e in ipairs(recoilOriginals) do pcall(function() e[1][e  
+                                      [2]]=e[3];end);end recoilOriginals={};end local function              recoilApply() recoilRestore();local RS=game:GetService(  
                                       "ReplicatedStorage");local mod=RS:FindFirstChild(                     "RecoilPatterns",true);if  not mod then warn(          
                                       "[Recoil] Hindi nahanap ang RecoilPatterns sa larong ito.");          return;end local ok,data=pcall(require,mod);if ( not   
                                       ok or (type(data)~="table")) then warn(                               "[Recoil] Hindi ma-require ang RecoilPatterns:",(ok    
