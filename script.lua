@@ -6,8 +6,8 @@
                                                             ,HoldKey=Enum.UserInputType.MouseButton2,ToggleKey=Enum.KeyCode.T,Smoothing=2  
                                                           ,FOV=40,MaxDistance=500,WallCheck=true,Part="Head"};local E={Enabled=true,         
                                                         ToggleKey=Enum.KeyCode.K,Fill=Color3.fromRGB(255,255,255),Outline=Color3.fromRGB(255,  
-                                                      255,255),FillTransparency=1,MaxDistance=5000,ShowNPCs=true,TeamCheck=false,MaxHighlights=  
-                                                    20,HPBar=true,HideGameNames=true};if getgenv then for _,k in ipairs({"__CamlockEspCleanup",    
+                                                      0,0),FillTransparency=1,MaxDistance=5000,ShowNPCs=true,TeamCheck=false,MaxHighlights=20,   
+                                                    HPBar=true,HideGameNames=true};if getgenv then for _,k in ipairs({"__CamlockEspCleanup",       
                                                   "__CamlockCleanup","__ChamsCleanup"}) do if getgenv()[k] then pcall(getgenv()[k]);end end end      
                                                   pcall(function() RunService:UnbindFromRenderStep("CamlockStep");end);pcall(function() RunService:    
                                                 UnbindFromRenderStep("ChamsStep");end);local parents={};pcall(function() table.insert(parents,game:      
