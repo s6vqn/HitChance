@@ -81,7 +81,7 @@
       "ON") or "OFF" );end end);if getgenv then getgenv().__CamlockEspCleanup=function() pcall(function() RunService:UnbindFromRenderStep("CamlockStep");end);pcall(     
       function() RunService:UnbindFromRenderStep("ChamsStep");end);inputConn:Disconnect();cAdded:Disconnect();if btnGui then btnGui:Destroy();end holder:Destroy();end;  
         end print("[Camlock+ESP] Loaded. T = camlock ON/OFF (hold right click), K = ESP ON/OFF.");pcall(function() game:GetService("StarterGui"):SetCore(                
-        "SendNotification",{Title="Camlock + ESP",Text="made by exil",Duration=4});end);local R={Enabled=true,Scale=0.4,ToggleKey=Enum.KeyCode.Y};local SKIP={"rate",    
+        "SendNotification",{Title="Camlock + ESP",Text="made by exil",Duration=4});end);local R={Enabled=true,Scale=0.6,ToggleKey=Enum.KeyCode.Y};local SKIP={"rate",    
         "rpm","delay","ammo","damage","speed","time","cooldown","range","spread","mag"};if getgenv then if getgenv().RecoilRestore then pcall(getgenv().RecoilRestore);  
           end if getgenv().__RecoilConn then pcall(function() getgenv().__RecoilConn:Disconnect();end);end end local recoilOriginals={};local function                 
             recoilKeySkipped(k) local s=string.lower(tostring(k));for _,w in ipairs(SKIP) do if string.find(s,w,1,true) then return true;end end return false;end      
